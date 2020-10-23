@@ -15,7 +15,7 @@ type expr =
   | Ite of expr * expr * expr
   | True
   | False
-  | Flip of float * float
+  | Flip of Complex.t * Complex.t
   | Let of String.t * expr * expr
   | FuncCall of String.t * expr List.t
   | Observe of expr

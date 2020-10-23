@@ -26,8 +26,13 @@ type lexing_position =
   }
 [@@deriving sexp]
 
-
 type source = {startpos: lexing_position; endpos: lexing_position}
+[@@deriving sexp_of]
+
+type complex_t = Complex.t =
+  { re : float
+  ; im : float
+  }
 [@@deriving sexp_of]
 
 type eexpr =
@@ -39,11 +44,11 @@ type eexpr =
   | IntConst of source * int
   | Not of source * eexpr
   | Ite of source * eexpr * eexpr * eexpr
-  | Flip of source * float * float
+  | Flip of source * complex_t * complex_t
   | Let of source * String.t * eexpr * eexpr
   | Observe of source * eexpr
   | Ident of source * String.t
-  | Discrete of source * float List.t
+  | Discrete of source * complex_t List.t
   | Int of source * int * int (* value, size *)
   | Eq of source * eexpr * eexpr
   | LeftShift of source * eexpr * int

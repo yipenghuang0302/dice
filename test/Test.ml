@@ -1,4 +1,4 @@
-open DiceLib
+(* open DiceLib
 open OUnit2
 open Core
 open Util
@@ -9,7 +9,7 @@ let test_1 _ =
   let prog = "let x = flip 0.4 in x" in
   assert_feq 0.4 (parse_and_prob prog);
   assert_feq 0.4 (parse_optimize_and_prob prog)
-  
+
 let test_not test_ctx =
   let prog = "let x = flip 0.4 in !x" in
   assert_feq 0.6 (parse_and_prob prog);
@@ -625,4 +625,4 @@ let expression_tests =
 ]
 
 let () =
-  run_test_tt_main expression_tests;
+  run_test_tt_main expression_tests; *)

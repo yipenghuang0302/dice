@@ -169,7 +169,7 @@ let rec compile_expr (ctx: compile_context) (tenv: tenv) (env: env) e : compiled
       let final_z = Bdd.labeled_vector_compose c2.z swap_bdd swap_idx in
       {state=final_state; z=Bdd.dand c1.z final_z; flips=List.append c1.flips c2.flips}
 
-  | Sample(e) ->
+  (* | Sample(e) ->
     let sube = compile_expr ctx tenv env e in
     (* perform sequential sampling *)
     let rec sequential_sample cur_obs state =
@@ -185,7 +185,7 @@ let rec compile_expr (ctx: compile_context) (tenv: tenv) (env: env) e : compiled
          (rbdd, Node(lres, rres))
       ) in
     let _, r = sequential_sample (Bdd.dtrue ctx.man) sube.state in
-    {state=r; z=Bdd.dtrue ctx.man; flips=[]}
+    {state=r; z=Bdd.dtrue ctx.man; flips=[]} *)
 
   | FuncCall(name, args) ->
     let func = try Hashtbl.Poly.find_exn ctx.funcs name
@@ -253,7 +253,7 @@ let get_prob p =
   let c = compile_program p in
   let z = Wmc.wmc c.body.z c.ctx.weights in
   let prob = Wmc.wmc (Bdd.dand (extract_leaf c.body.state) c.body.z) c.ctx.weights in
-  prob /. z
+  Complex.div prob z
 
 
 module I = Parser.MenhirInterpreter

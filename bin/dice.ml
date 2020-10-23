@@ -69,8 +69,8 @@ let parse_and_print ~print_parsed ~print_internal ~print_size ~skip_table
     let res = if skip_table then res else res @
       (let table = VarState.get_table compiled.body.state t in
        let probs = List.map table ~f:(fun (label, bdd) ->
-           if Util.within_epsilon z 0.0 then (label, 0.0) else
-             let prob = (Wmc.wmc (Bdd.dand bdd zbdd) compiled.ctx.weights) /. z in
+           (* if Util.within_epsilon z.re 0.0 then (label, 0.0) else *)
+             let prob = Complex.div (Wmc.wmc (Bdd.dand bdd zbdd) compiled.ctx.weights) z in
              (label, prob)) in
        let l = [["Value"; "Probability"]] @ List.map probs ~f:(fun (typ, prob) ->
            let rec print_pretty e =
@@ -80,7 +80,7 @@ let parse_and_print ~print_parsed ~print_internal ~print_size ~skip_table
              | `False -> "false"
              | `Tup(l, r) -> Format.sprintf "(%s, %s)" (print_pretty l) (print_pretty r)
              | _ -> failwith "ouch" in
-           [print_pretty typ; string_of_float prob]
+           [print_pretty typ; string_of_float prob.re]
          ) in
        [TableRes("Joint Distribution", l)]
       ) in
@@ -103,15 +103,15 @@ let parse_and_print ~print_parsed ~print_internal ~print_size ~skip_table
         let zbdd = compiled.body.z in
         let z = Wmc.wmc zbdd compiled.ctx.weights in
         let probs = List.map table ~f:(fun (label, bdd) ->
-            if Util.within_epsilon z 0.0 then (label, 0.0) else
+            (* if Util.within_epsilon z 0.0 then (label, 0.0) else *)
               let prob = (Wmc.wmc (Bdd.dand bdd zbdd) compiled.ctx.weights) in
               (label, prob)) in
         (match prob with
          | None -> draw_sample (Some(probs), z) (n-1)
          | Some(v) ->
-           let summed = List.map (List.zip_exn v probs) ~f:(fun ((_, a), (lbl, b)) -> (lbl, a +. b)) in
-           draw_sample (Some(summed), z +. oldz) (n-1)) in
-    let (res_state, z) = draw_sample (None, 0.0) n in
+           let summed = List.map (List.zip_exn v probs) ~f:(fun ((_, a), (lbl, b)) -> (lbl, Complex.add a b)) in
+           draw_sample (Some(summed), Complex.add z oldz) (n-1)) in
+    let (res_state, z) = draw_sample (None, Complex.zero) n in
     let res = if skip_table then [] else
         let l = [["Value"; "Probability"]] @ List.map (Option.value_exn res_state) ~f:(fun (typ, prob) ->
             let rec print_pretty e =
@@ -121,7 +121,7 @@ let parse_and_print ~print_parsed ~print_internal ~print_size ~skip_table
               | `False -> "false"
               | `Tup(l, r) -> Format.sprintf "(%s, %s)" (print_pretty l) (print_pretty r)
               | _ -> failwith "ouch" in
-            [print_pretty typ; string_of_float (prob /. z)]
+            [print_pretty typ; string_of_float (Complex.div prob z).re]
           ) in
         [TableRes("Joint Probability", l)] in
     let res = if print_size then
@@ -166,5 +166,3 @@ let command =
 
 let () =
   Command.run ~version:"1.0" command
-
-

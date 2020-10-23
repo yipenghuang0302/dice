@@ -1,5 +1,11 @@
 open Core
 
+type complex_t = Complex.t =
+  { re : float
+  ; im : float
+  }
+[@@deriving sexp_of]
+
 type expr =
   | And of expr * expr
   | Or of expr * expr
@@ -14,7 +20,7 @@ type expr =
   | Ite of expr * expr * expr
   | True
   | False
-  | Flip of float * float
+  | Flip of complex_t * complex_t
   | Let of String.t * expr * expr
   | FuncCall of String.t * expr List.t
   | Observe of expr
@@ -142,7 +148,7 @@ let string_of_prog_unparsed p =
     | Observe(e1) | Fst(e1) | Snd(e1) | Sample(e1) ->
       let s1 = pr_expr e1 in
       Format.dprintf "@[<hov 2>%s@ %t@]" (string_of_op e) s1
-    | Flip(f1, f2) -> Format.dprintf "flip %s" (Format.asprintf "%f %f" f1 f2)
+    | Flip(f1, f2) -> Format.dprintf "flip %s" (Format.asprintf "%f+%fi %f+%fi" f1.re f1.im f2.re f2.im)
     | Ident(s) -> Format.dprintf "%s" s
     | FuncCall(id, args) ->
       let args_s =

@@ -18,7 +18,7 @@ let int = '-'? ['0'-'9'] ['0'-'9']*
 let digit = ['0'-'9']
 let frac = '.' digit*
 let exp = ['e' 'E'] ['-' '+']? digit+
-let float = '-'? digit* frac? exp?
+let complex = '-'? digit* frac? exp? '+' '-'? digit* frac? exp? 'i'
 let white = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
 let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
@@ -72,7 +72,7 @@ rule token =
     | ':'                       { COLON }
     | ','                       { COMMA }
     | int as i                  { INT_LIT(int_of_string i); }
-    | float as num              { FLOAT_LIT(float_of_string num); }
+    | complex as num            { COMPLEX_LIT({re=float_of_string (List.hd (String.split_on_char '+' num));im=float_of_string (List.hd (String.split_on_char 'i' (List.hd (List.rev (String.split_on_char '+' num)))))}); }
     | id as ident               { ID(ident); }
     | eof                       { EOF }
 and comment =

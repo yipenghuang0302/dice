@@ -172,6 +172,12 @@ let rec type_eq t1 t2 =
 type source = EG.source
 [@@deriving sexp_of]
 
+type complex_t = Complex.t =
+  { re : float
+  ; im : float
+  }
+[@@deriving sexp_of]
+
 type ast =
     And of source * tast * tast
   | LeftShift of source * tast * int
@@ -183,11 +189,11 @@ type ast =
   | IntConst of source * int
   | Not of source * tast
   | Ite of source * tast * tast * tast
-  | Flip of source * float * float
+  | Flip of source * complex_t * complex_t
   | Let of source * String.t * tast * tast
   | Observe of source * tast
   | Ident of source * String.t
-  | Discrete of source * float List.t
+  | Discrete of source * complex_t List.t
   | Int of source * int * int (* value, size *)
   | Eq of source * tast * tast
   | Plus of source * tast * tast
@@ -301,7 +307,7 @@ let rec type_of (ctx: typ_ctx) (env: EG.tenv) (e: EG.eexpr) : tast =
                            src.startpos.pos_lnum src.startpos.pos_cnum))) else ();
     (TInt(sz), Int(src, sz, v))
   | Discrete(src, l) ->
-    let sum = List.fold l ~init:0.0 ~f:(fun acc i -> acc +. i) in
+    let sum = List.fold l ~init:0.0 ~f:(fun acc i -> acc +. Complex.norm2 i) in
     if not (within_epsilon sum 1.0) then
       raise (Type_error (Format.sprintf "Type error at line %d column %d: discrete parameters must sum to 1, got %f"
                            src.startpos.pos_lnum src.startpos.pos_cnum sum))
@@ -399,7 +405,7 @@ let rec and_of_l l =
   | [x] -> x
   | x::xs -> CG.And(x, and_of_l xs)
 
-let rec gen_discrete mgr (l: float List.t) =
+let rec gen_discrete mgr (l: Complex.t List.t) =
   let open Cudd in
   let open CG in
   (* first generate the ADD *)
@@ -413,7 +419,7 @@ let rec gen_discrete mgr (l: float List.t) =
           let curv = if v = 1 then b else Bdd.dnot b in
           Bdd.dand acc curv
         ) in
-      let leaf = Add.cst mgr param in
+      let leaf = Add.cst mgr param.re in
       Add.ite indicator leaf acc
     ) in
   (* now make the list of flip assignments *)
@@ -424,9 +430,9 @@ let rec gen_discrete mgr (l: float List.t) =
           let p1 = sum_add (Add.mul add (Add.of_bdd (Bdd.dand cur_bit cur_bdd))) in
           let p2 = sum_add (Add.mul add (Add.of_bdd (Bdd.dand cur_bdd (Bdd.dnot cur_bit)))) in
           if within_epsilon p1 0.0 then
-            (cur_constraint, 0.)
+            (cur_constraint, Complex.zero)
           else
-            (cur_constraint, (p1 /. (p1 +. p2)))
+            (cur_constraint, {re=p1 /. (p1 +. p2);im=0.0})
         ) in
       (* now build the expression *)
       (match l with
