@@ -63,8 +63,8 @@ expr:
     | expr IFF expr { Iff({startpos=$startpos; endpos=$endpos}, $1, $3) }
     | expr XOR expr { Xor({startpos=$startpos; endpos=$endpos}, $1, $3) }
     | NOT expr { Not({startpos=$startpos; endpos=$endpos}, $2) }
-    | FLIP FLOAT_LIT { Flip({startpos=$startpos; endpos=$endpos}, $2) }
-    | FLIP LPAREN FLOAT_LIT RPAREN { Flip({startpos=$startpos; endpos=$endpos}, $3) }
+    | FLIP FLOAT_LIT FLOAT_LIT { Flip({startpos=$startpos; endpos=$endpos}, $2, $3) }
+    | FLIP LPAREN FLOAT_LIT FLOAT_LIT RPAREN { Flip({startpos=$startpos; endpos=$endpos}, $3, $4) }
     | OBSERVE expr { Observe({startpos=$startpos; endpos=$endpos}, $2) }
     | IF expr THEN expr ELSE expr { Ite({startpos=$startpos; endpos=$endpos}, $2, $4, $6) }
     | ITERATE LPAREN id=ID COMMA e=expr COMMA k=INT_LIT RPAREN { Iter({startpos=$startpos; endpos=$endpos}, id, e, k) }
@@ -82,4 +82,3 @@ func: FUN; name=ID; LPAREN; args=separated_list(COMMA, arg); RPAREN LBRACE; body
 
 program:
   funcs=list(func); body=expr; EOF { { functions=funcs; body=body } }
-

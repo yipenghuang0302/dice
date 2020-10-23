@@ -125,12 +125,12 @@ let rec compile_expr (ctx: compile_context) (tenv: tenv) (env: env) e : compiled
      | _ -> failwith (Format.sprintf "Internal Failure: calling `snd` on non-tuple at %s" (string_of_expr e))) in
     {state=v'; z=c.z; flips=c.flips}
 
-  | Flip(f) ->
+  | Flip(f1,f2) ->
     let new_f = Bdd.newvar ctx.man in
     let var_lbl = Bdd.topvar new_f in
     let var_name = (Format.sprintf "f%d" !flip_id) in
     flip_id := !flip_id + 1;
-    Hashtbl.Poly.add_exn ctx.weights ~key:var_lbl ~data:(1.0-.f, f);
+    Hashtbl.Poly.add_exn ctx.weights ~key:var_lbl ~data:(f2, f1);
     Hashtbl.add_exn ctx.name_map ~key:var_lbl ~data:var_name;
     {state=Leaf(new_f); z=Bdd.dtrue ctx.man; flips=[new_f]}
 
@@ -349,4 +349,3 @@ let parse_with_error lexbuf =
          we stop as soon as the parser reports [HandlingError]. *)
       assert false in
   helper lexbuf (Parser.Incremental.program lexbuf.lex_curr_p)
-

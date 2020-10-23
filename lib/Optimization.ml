@@ -13,15 +13,15 @@ let fresh () =
   n := !n + 1;
   (Format.sprintf "$%d" !n)
 
-let rec printL (f: float list) = 
+let rec printL (f: float list) =
   match f with
   | [] -> Format.printf "\n";
-  | head::tail -> Format.printf "%f " head; (printL tail) 
+  | head::tail -> Format.printf "%f " head; (printL tail)
 
-let rec printVFL (fl: (String.t * float) list) = 
+let rec printVFL (fl: (String.t * float) list) =
   match fl with
   | [] -> Format.printf "\n";
-  | (_, f)::tail -> Format.printf "%f " f; (printVFL tail) 
+  | (_, f)::tail -> Format.printf "%f " f; (printVFL tail)
 
 let rec printFL (fl: (String.t * float * (String.t * ExternalGrammar.eexpr) list) list) =
   let rec printGL gl =
@@ -37,7 +37,7 @@ let rec printFL (fl: (String.t * float * (String.t * ExternalGrammar.eexpr) list
     printGL gl;
     printFL tail
 
-let rec printEL (el: (String.t * ExternalGrammar.eexpr) list) = 
+let rec printEL (el: (String.t * ExternalGrammar.eexpr) list) =
   match el with
   | [] -> Format.printf "\n";
   | (v, e)::tail ->
@@ -45,20 +45,20 @@ let rec printEL (el: (String.t * ExternalGrammar.eexpr) list) =
 
 (* Optimization pass *)
 (* Remove one item from list l if predicate function f returns true *)
-let rec remove_one l f = 
+let rec remove_one l f =
   match l with
   | [] -> []
   | head::tail -> if f head then tail else head::(remove_one tail f)
 
-type tree = 
+type tree =
   | Node of (float list * float list) * tree * tree
   | Branch of tree * tree
-  | Leaf 
+  | Leaf
 
 (* Collect flips that need to be replaced *)
 let rec upPass (e: CG.expr) : float list * tree =
   (* If there are a pair of same items in l1 and l2 use only 1 copy *)
-  let rec consolidate (l1: 'a list) (l2: 'a list) : 'a list = 
+  let rec consolidate (l1: 'a list) (l2: 'a list) : 'a list =
     match l1 with
     | [] -> l2
     | head::tail ->
@@ -67,35 +67,35 @@ let rec upPass (e: CG.expr) : float list * tree =
   in
 
   match e with
-  | Flip(f) -> [f], Leaf
+  | Flip(f1,f2) -> [f1], Leaf
   | Ite(_, thn, els) ->
     (* let n0, t0 = upPass g in *)
     let n1, t1 = upPass thn in
     let n2, t2 = upPass els in
     let t3 = Node((n1, n2), t1, t2) in
-    let n3 = consolidate n1 n2 in 
+    let n3 = consolidate n1 n2 in
     (n3, t3)
     (* (n3, Branch(t0, t3)) *)
-  | Let(_, e1, e2) -> 
+  | Let(_, e1, e2) ->
     let n1, t1 = upPass e1 in
     let n2, t2 = upPass e2 in
     (n1@n2, Branch(t1, t2))
   | _ -> [], Leaf
 
   (* Replace the flips with corresponding variables *)
-let rec downPass (e: CG.expr) 
-  (fl: (String.t * float * (String.t * CG.expr) list * bool) list) 
+let rec downPass (e: CG.expr)
+  (fl: (String.t * float * (String.t * CG.expr) list * bool) list)
   (t: tree)
     : CG.expr * (String.t * float * (String.t * CG.expr) list * bool) list =
   (* Return the variable name of the replacement flip *)
-  let rec replace (f: float) (fl:  (String.t * float * (String.t * CG.expr) list * bool) list) 
+  let rec replace (f: float) (fl:  (String.t * float * (String.t * CG.expr) list * bool) list)
     : (String.t * ((String.t * float * (String.t * CG.expr) list * bool) list)) option =
     match fl with
     | [] -> None
-    | (var, flip, gl, used)::tail -> 
+    | (var, flip, gl, used)::tail ->
       if flip = f && not used then
         Some (var, (var, flip, gl, true)::tail)
-      else 
+      else
         match replace f tail with
         | None -> None
         | Some (v, rest) -> Some (v, (var, flip, gl, used)::rest)
@@ -105,11 +105,11 @@ let rec downPass (e: CG.expr)
                 : (String.t * float * (String.t * CG.expr) list * bool) list =
     match vf with
     | [] -> c
-    | head::tail -> 
+    | head::tail ->
       let var = fresh() in
       get_fl tail gl ((var, head, gl, false)::c)
 
-  and update_fl (fl: (String.t * float * (String.t * CG.expr) list * bool) list) 
+  and update_fl (fl: (String.t * float * (String.t * CG.expr) list * bool) list)
     (gl: (String.t * CG.expr)) (lower_flips: float list)
     (c: (String.t * float * (String.t * CG.expr) list * bool) list)
     : (String.t * float * (String.t * CG.expr) list * bool) list =
@@ -121,9 +121,9 @@ let rec downPass (e: CG.expr)
       else
         update_fl tail gl lower_flips fl
 
-  and merge_fl (fl1: (String.t * float * (String.t * CG.expr) list * bool) list) 
-    (fl2: (String.t * float * (String.t * CG.expr) list * bool) list) 
-    (c: (String.t * float * (String.t * CG.expr) list * bool) list) 
+  and merge_fl (fl1: (String.t * float * (String.t * CG.expr) list * bool) list)
+    (fl2: (String.t * float * (String.t * CG.expr) list * bool) list)
+    (c: (String.t * float * (String.t * CG.expr) list * bool) list)
     : (String.t * float * (String.t * CG.expr) list * bool) list =
     let rec search_fl2 (v1,f1,gl1,used1) fl2 =
       let rec merge_gl gl1 gl2 =
@@ -131,7 +131,7 @@ let rec downPass (e: CG.expr)
         | [] -> gl2
         | (v1, _)::tail ->
           List.filter (fun (v2, _) -> not (v1 = v2)) gl2
-          |> merge_gl tail 
+          |> merge_gl tail
       in
 
       match fl2 with
@@ -149,11 +149,11 @@ let rec downPass (e: CG.expr)
         (match search_fl2 head1 fl2 with
         | None -> merge_fl tail1 fl2 (head1::c)
         | Some(r) -> merge_fl tail1 fl2 (r::c))
-  
-  and collapse_fl (fl: (String.t * float * (String.t * CG.expr) list * bool) list) 
+
+  and collapse_fl (fl: (String.t * float * (String.t * CG.expr) list * bool) list)
     (vl: String.t list)
     (vf: (String.t * CG.expr) list)
-    (to_add: (String.t * CG.expr) list) 
+    (to_add: (String.t * CG.expr) list)
     (pass_up: (String.t * float * (String.t * CG.expr) list * bool) list)
     : (String.t * CG.expr) list * (String.t * float * (String.t * CG.expr) list * bool) list =
     let rec merge_gl gl c =
@@ -168,14 +168,14 @@ let rec downPass (e: CG.expr)
 
     match fl with
     | [] -> (List.rev_append vf (List.rev to_add)), List.rev pass_up
-    | (v,f,gl,used)::tail -> 
+    | (v,f,gl,used)::tail ->
       if List.mem v vl then
-        collapse_fl tail vl ((v,Flip(f))::vf) (merge_gl gl to_add) pass_up
+        collapse_fl tail vl ((v,Flip(f,f))::vf) (merge_gl gl to_add) pass_up
       else
         collapse_fl tail vl vf to_add ((v,f,gl,used)::pass_up)
-    
+
   (* Return each matching pair from two list *)
-  and find_match (l1: float list) (l2: float list) : float list = 
+  and find_match (l1: float list) (l2: float list) : float list =
     match l1 with
     | [] -> []
     | head::tail ->
@@ -189,7 +189,7 @@ let rec downPass (e: CG.expr)
   and find_no_match (l1: float list) (l2: float list) : float list =
     match l1 with
     | [] -> []
-    | head::tail -> 
+    | head::tail ->
       if List.mem head l2 then
         let new_l2 = remove_one l2 (fun x -> x = head) in
         (find_no_match tail new_l2)
@@ -197,10 +197,10 @@ let rec downPass (e: CG.expr)
         head::(find_no_match tail l2)
 
   (* Return variable assignments to expr *)
-  and add_lets (el: (String.t * CG.expr) list) (inner: CG.expr) : CG.expr = 
-    match el with 
+  and add_lets (el: (String.t * CG.expr) list) (inner: CG.expr) : CG.expr =
+    match el with
     | [] -> inner
-    | (v, expr)::tail -> 
+    | (v, expr)::tail ->
       add_lets tail (Let(v, expr, inner))
 
   and has_flip (e: CG.expr) : bool =
@@ -209,22 +209,22 @@ let rec downPass (e: CG.expr)
     | Ite(g, thn, els) -> (has_flip g) || (has_flip thn) || (has_flip els)
     | Let(_, e1, e2)
     | And(e1, e2)
-    | Or(e1, e2) | Eq(e1, e2) | Xor(e1, e2) 
+    | Or(e1, e2) | Eq(e1, e2) | Xor(e1, e2)
     | Tup(e1, e2) -> (has_flip e1) || (has_flip e2)
     | Snd(e1) | Fst(e1) | Not(e1) | Observe(e1) -> (has_flip e1)
     | _ -> false
-  in 
+  in
 
   match e with
-  | Flip(f) ->
-    (match replace f fl with
-    | None -> Flip(f), fl
+  | Flip(f1,f2) ->
+    (match replace f1 fl with
+    | None -> Flip(f1,f2), fl
     | Some (v, new_fl) -> Ident(v), new_fl)
 
   | Ite(g, thn, els) ->
     (* Find common flips between subtrees *)
     (match t with
-      | Node((llist, rlist), left, right) -> 
+      | Node((llist, rlist), left, right) ->
         let node_list = find_match llist rlist in
         let upper_flips = List.map (fun (_, f, _, _) -> f) fl in
         let new_flips = find_no_match node_list upper_flips in
@@ -234,7 +234,7 @@ let rec downPass (e: CG.expr)
         (* add guard to appropriate fl *)
         let gv = fresh() in
         let fl2 = if not pull_g || lower_flips = [] then fl else update_fl fl (gv, g) lower_flips [] in
-        
+
         if new_flips = [] then
           if lower_flips = [] then
             Ite(g, thn, els), fl2
@@ -267,7 +267,7 @@ let rec downPass (e: CG.expr)
       | _ -> e, fl)
   | Let(v, e1, e2) ->
     (match t with
-    | Branch(t1, t2) -> 
+    | Branch(t1, t2) ->
       let (n1, fl1) = downPass e1 fl t1 in
       let (n2, fl2) = downPass e2 fl1 t2 in
       (Let(v, n1, n2), fl2)
@@ -275,15 +275,15 @@ let rec downPass (e: CG.expr)
   | _ -> e, fl
 
   (* Perform code motion on flip f patterns *)
-let flip_code_motion (e: CG.expr) (new_n: int) : CG.expr = 
+let flip_code_motion (e: CG.expr) (new_n: int) : CG.expr =
   n := new_n;
   let _, t = upPass e in
   let (e1, _) = downPass e [] t in
   e1
 
-let rec merge_branch (e: CG.expr) : CG.expr = 
+let rec merge_branch (e: CG.expr) : CG.expr =
   match e with
-  | Flip(f) -> Flip(f)
+  | Flip(f1,f2) -> Flip(f1,f2)
   | Ite(g, thn, els) ->
     let n1 = merge_branch thn in
     let n2 = merge_branch els in
@@ -294,7 +294,7 @@ let rec merge_branch (e: CG.expr) : CG.expr =
     | _, _ ->
       if n1 = n2 then
         n1
-      else 
+      else
         Ite(g, n1, n2))
   | Let(v, e1, e2) ->
     let n1 = merge_branch e1 in
@@ -319,7 +319,7 @@ let rec merge_branch (e: CG.expr) : CG.expr =
   | Tup(e1, e2) ->
     let n1 = merge_branch e1 in
     let n2 = merge_branch e2 in
-    Tup(n1, n2)  
+    Tup(n1, n2)
   | Snd(e1) ->
     let n1 = merge_branch e1 in
     Snd(n1)
@@ -335,14 +335,14 @@ let rec merge_branch (e: CG.expr) : CG.expr =
   | _ -> e
 
 let rec redundant_flip_elimination (e: CG.expr) : CG.expr =
-  match e with 
-  | Flip(f) ->
-    if f = 0.0 then
+  match e with
+  | Flip(f1,f2) ->
+    if f1 = 0.0 then
       False
-    else if f = 1.0 then
+    else if f1 = 1.0 then
       True
     else
-      Flip(f)
+      Flip(f1,f2)
   | Ite(g, thn, els) ->
     let n1 = redundant_flip_elimination thn in
     let n2 = redundant_flip_elimination els in
@@ -370,7 +370,7 @@ let rec redundant_flip_elimination (e: CG.expr) : CG.expr =
   | Tup(e1, e2) ->
     let n1 = redundant_flip_elimination e1 in
     let n2 = redundant_flip_elimination e2 in
-    Tup(n1, n2)  
+    Tup(n1, n2)
   | Snd(e1) ->
     let n1 = redundant_flip_elimination e1 in
     Snd(n1)
@@ -385,8 +385,8 @@ let rec redundant_flip_elimination (e: CG.expr) : CG.expr =
     Observe(n1)
   | _ -> e
 
-let do_optimize (e: CG.expr) (new_n: int) (flip_lifting: bool) (branch_elimination: bool) (determinism: bool) : CG.expr = 
+let do_optimize (e: CG.expr) (new_n: int) (flip_lifting: bool) (branch_elimination: bool) (determinism: bool) : CG.expr =
   let e0 = if determinism then redundant_flip_elimination e else e in
-  let e1 = if flip_lifting then flip_code_motion e0 new_n else e0 in 
+  let e1 = if flip_lifting then flip_code_motion e0 new_n else e0 in
   let e2 = if branch_elimination then merge_branch e1 else e1 in
   e2

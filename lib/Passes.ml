@@ -53,7 +53,7 @@ let inline_functions (p: EG.program) =
     | Gt(s, e1, e2) -> helper(Not(s, Lte(s, e1, e2)))
     | Gte(s, e1, e2) -> helper(Not(s, Lt(s, e1, e2)))
     | Not(s, e) -> Not(s, helper e)
-    | Flip(s, f) -> Flip(s, f)
+    | Flip(s, f1, f2) -> Flip(s, f1, f2)
     | Ident(s, id) -> Ident(s, id)
     | Discrete(s, l) -> Discrete(s, l)
     | Int(s, sz, v) -> Int(s, sz, v)
@@ -96,7 +96,7 @@ let num_paths (p: EG.program) : LogProbability.t =
       let s1 = helper e1 in
       let s2 = helper e2 in LogProbability.mult s1 s2
     | Not(_,e) -> helper e
-    | Flip(_,_) -> LogProbability.make 2.0
+    | Flip(_,_,_) -> LogProbability.make 2.0
     | Ident(_,_) ->  LogProbability.make 1.0
     | Discrete(_,l) -> LogProbability.make (float_of_int (List.length l))
     | Int(_,_, _) -> LogProbability.make 1.0
@@ -183,7 +183,7 @@ type ast =
   | IntConst of source * int
   | Not of source * tast
   | Ite of source * tast * tast * tast
-  | Flip of source * float
+  | Flip of source * float * float
   | Let of source * String.t * tast * tast
   | Observe of source * tast
   | Ident of source * String.t
@@ -270,7 +270,7 @@ let rec type_of (ctx: typ_ctx) (env: EG.tenv) (e: EG.eexpr) : tast =
     (TBool, Observe(s, s1))
   | True(s) -> (TBool, True(s))
   | False(s) -> (TBool, False(s))
-  | Flip(s, f) -> (TBool, Flip(s,f))
+  | Flip(s, f1, f2) -> (TBool, Flip(s,f1,f2))
   | Ident(src, s) ->
     let t = (try Map.Poly.find_exn env s
      with _ -> raise (Type_error (Format.sprintf "Type error at line %d column %d: \
@@ -431,9 +431,9 @@ let rec gen_discrete mgr (l: float List.t) =
       (* now build the expression *)
       (match l with
        | [] -> failwith "unreachable"
-       | [(_, param)] -> [cur_name, Flip(param)]
+       | [(_, param)] -> [cur_name, Flip(param,param)]
        | (_, param)::xs ->
-         let ifbody = List.fold xs ~init:(Flip(param)) ~f:(fun acc (guard, param) -> Ite(guard, Flip(param), acc)) in
+         let ifbody = List.fold xs ~init:(Flip(param,param)) ~f:(fun acc (guard, param) -> Ite(guard, Flip(param,param), acc)) in
          [cur_name, ifbody]
       ) @ acc
     ) in
@@ -603,7 +603,7 @@ let rec from_external_expr_h (ctx: external_ctx) (tenv: EG.tenv) ((t, e): tast) 
   | Gt(s, e1, e2) -> from_external_expr_h ctx tenv (TBool, Not(s, (TBool, Lte(s, e1, e2))))
   | Gte(s, e1, e2) -> from_external_expr_h ctx tenv (TBool, Not(s, (TBool, Lt(s, e1, e2))))
   | Not(_, e) -> Not(from_external_expr_h ctx tenv e)
-  | Flip(_, f) -> Flip(f)
+  | Flip(_, f1, f2) -> Flip(f1, f2)
   | Ident(_, s) -> Ident(s)
   | Discrete(_, l) -> gen_discrete ctx l
   | Int(_, sz, v) ->

@@ -39,7 +39,7 @@ type eexpr =
   | IntConst of source * int
   | Not of source * eexpr
   | Ite of source * eexpr * eexpr * eexpr
-  | Flip of source * float
+  | Flip of source * float * float
   | Let of source * String.t * eexpr * eexpr
   | Observe of source * eexpr
   | Ident of source * String.t
@@ -96,7 +96,7 @@ let get_src e =
   | Gte(s, _, _) -> s
   | IntConst(s, _) -> s
   | Not(s, _) -> s
-  | Flip(s, _) -> s
+  | Flip(s, _, _) -> s
   | Ident(s, _) -> s
   | Discrete(s, _) -> s
   | True(s) -> s
