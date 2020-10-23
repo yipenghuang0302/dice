@@ -13,7 +13,6 @@
 %token LET OBSERVE FLIP LBRACE RBRACE FST SND FUN BOOL ITERATE
 
 %token <int>    INT_LIT
-/* %token <float>  FLOAT_LIT */
 %token <Complex.t>  COMPLEX_LIT
 %token <string> ID
 

@@ -276,7 +276,7 @@ let rec type_of (ctx: typ_ctx) (env: EG.tenv) (e: EG.eexpr) : tast =
     (TBool, Observe(s, s1))
   | True(s) -> (TBool, True(s))
   | False(s) -> (TBool, False(s))
-  | Flip(s, f1, f2) -> (TBool, Flip(s,f1,f2))
+  | Flip(s, f1, f2) -> (TBool, Flip(s, f1, f2))
   | Ident(src, s) ->
     let t = (try Map.Poly.find_exn env s
      with _ -> raise (Type_error (Format.sprintf "Type error at line %d column %d: \

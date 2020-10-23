@@ -72,7 +72,7 @@ let parse_and_print ~print_parsed ~print_internal ~print_size ~skip_table
            (* if Util.within_epsilon z.re 0.0 then (label, 0.0) else *)
              let prob = Complex.div (Wmc.wmc (Bdd.dand bdd zbdd) compiled.ctx.weights) z in
              (label, prob)) in
-       let l = [["Value"; "Probability"]] @ List.map probs ~f:(fun (typ, prob) ->
+       let l = [["Value"; "Amplitude.re"; "Amplitude.im"]] @ List.map probs ~f:(fun (typ, prob) ->
            let rec print_pretty e =
              match e with
              | `Int(v) -> string_of_int v
@@ -80,7 +80,7 @@ let parse_and_print ~print_parsed ~print_internal ~print_size ~skip_table
              | `False -> "false"
              | `Tup(l, r) -> Format.sprintf "(%s, %s)" (print_pretty l) (print_pretty r)
              | _ -> failwith "ouch" in
-           [print_pretty typ; string_of_float prob.re]
+           [print_pretty typ; string_of_float prob.re; string_of_float prob.im]
          ) in
        [TableRes("Joint Distribution", l)]
       ) in
@@ -113,7 +113,7 @@ let parse_and_print ~print_parsed ~print_internal ~print_size ~skip_table
            draw_sample (Some(summed), Complex.add z oldz) (n-1)) in
     let (res_state, z) = draw_sample (None, Complex.zero) n in
     let res = if skip_table then [] else
-        let l = [["Value"; "Probability"]] @ List.map (Option.value_exn res_state) ~f:(fun (typ, prob) ->
+        let l = [["Value"; "Amplitude.re"; "Amplitude.im"]] @ List.map (Option.value_exn res_state) ~f:(fun (typ, prob) ->
             let rec print_pretty e =
               match e with
               | `Int(v) -> string_of_int v
@@ -121,9 +121,9 @@ let parse_and_print ~print_parsed ~print_internal ~print_size ~skip_table
               | `False -> "false"
               | `Tup(l, r) -> Format.sprintf "(%s, %s)" (print_pretty l) (print_pretty r)
               | _ -> failwith "ouch" in
-            [print_pretty typ; string_of_float (Complex.div prob z).re]
+            [print_pretty typ; string_of_float (Complex.div prob z).re; string_of_float (Complex.div prob z).im]
           ) in
-        [TableRes("Joint Probability", l)] in
+        [TableRes("Joint Amplitude", l)] in
     let res = if print_size then
         res @ [StringRes("Compiled BDD size", string_of_float(float_of_int !sz /. float_of_int n))] else res in
     res

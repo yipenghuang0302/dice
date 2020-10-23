@@ -51,12 +51,12 @@ let rec remove_one l f =
   | head::tail -> if f head then tail else head::(remove_one tail f)
 
 type tree =
-  | Node of (Complex.t list * Complex.t list) * tree * tree
+  | Node of ((Complex.t * Complex.t) list * (Complex.t * Complex.t) list) * tree * tree
   | Branch of tree * tree
   | Leaf
 
 (* Collect flips that need to be replaced *)
-let rec upPass (e: CG.expr) : Complex.t list * tree =
+let rec upPass (e: CG.expr) : (Complex.t * Complex.t) list * tree =
   (* If there are a pair of same items in l1 and l2 use only 1 copy *)
   let rec consolidate (l1: 'a list) (l2: 'a list) : 'a list =
     match l1 with
@@ -67,7 +67,7 @@ let rec upPass (e: CG.expr) : Complex.t list * tree =
   in
 
   match e with
-  | Flip(f1,f2) -> [f1], Leaf
+  | Flip(f1, f2) -> [f1, f2], Leaf
   | Ite(_, thn, els) ->
     (* let n0, t0 = upPass g in *)
     let n1, t1 = upPass thn in
@@ -84,12 +84,12 @@ let rec upPass (e: CG.expr) : Complex.t list * tree =
 
   (* Replace the flips with corresponding variables *)
 let rec downPass (e: CG.expr)
-  (fl: (String.t * Complex.t * (String.t * CG.expr) list * bool) list)
+  (fl: (String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list)
   (t: tree)
-    : CG.expr * (String.t * Complex.t * (String.t * CG.expr) list * bool) list =
+    : CG.expr * (String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list =
   (* Return the variable name of the replacement flip *)
-  let rec replace (f: Complex.t) (fl:  (String.t * Complex.t * (String.t * CG.expr) list * bool) list)
-    : (String.t * ((String.t * Complex.t * (String.t * CG.expr) list * bool) list)) option =
+  let rec replace (f: Complex.t * Complex.t) (fl:  (String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list)
+    : (String.t * ((String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list)) option =
     match fl with
     | [] -> None
     | (var, flip, gl, used)::tail ->
@@ -100,19 +100,19 @@ let rec downPass (e: CG.expr)
         | None -> None
         | Some (v, rest) -> Some (v, (var, flip, gl, used)::rest)
 
-  and get_fl (vf: Complex.t list) (gl: (String.t * CG.expr) list)
-              (c: (String.t * Complex.t * (String.t * CG.expr) list * bool) list)
-                : (String.t * Complex.t * (String.t * CG.expr) list * bool) list =
+  and get_fl (vf: (Complex.t * Complex.t) list) (gl: (String.t * CG.expr) list)
+              (c: (String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list)
+                : (String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list =
     match vf with
     | [] -> c
     | head::tail ->
       let var = fresh() in
       get_fl tail gl ((var, head, gl, false)::c)
 
-  and update_fl (fl: (String.t * Complex.t * (String.t * CG.expr) list * bool) list)
-    (gl: (String.t * CG.expr)) (lower_flips: Complex.t list)
-    (c: (String.t * Complex.t * (String.t * CG.expr) list * bool) list)
-    : (String.t * Complex.t * (String.t * CG.expr) list * bool) list =
+  and update_fl (fl: (String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list)
+    (gl: (String.t * CG.expr)) (lower_flips: (Complex.t * Complex.t) list)
+    (c: (String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list)
+    : (String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list =
     match fl with
     | [] -> List.rev c
     | (v,f,gl1,used)::tail ->
@@ -121,10 +121,10 @@ let rec downPass (e: CG.expr)
       else
         update_fl tail gl lower_flips fl
 
-  and merge_fl (fl1: (String.t * Complex.t * (String.t * CG.expr) list * bool) list)
-    (fl2: (String.t * Complex.t * (String.t * CG.expr) list * bool) list)
-    (c: (String.t * Complex.t * (String.t * CG.expr) list * bool) list)
-    : (String.t * Complex.t * (String.t * CG.expr) list * bool) list =
+  and merge_fl (fl1: (String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list)
+    (fl2: (String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list)
+    (c: (String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list)
+    : (String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list =
     let rec search_fl2 (v1,f1,gl1,used1) fl2 =
       let rec merge_gl gl1 gl2 =
         match gl1 with
@@ -150,12 +150,12 @@ let rec downPass (e: CG.expr)
         | None -> merge_fl tail1 fl2 (head1::c)
         | Some(r) -> merge_fl tail1 fl2 (r::c))
 
-  and collapse_fl (fl: (String.t * Complex.t * (String.t * CG.expr) list * bool) list)
+  and collapse_fl (fl: (String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list)
     (vl: String.t list)
     (vf: (String.t * CG.expr) list)
     (to_add: (String.t * CG.expr) list)
-    (pass_up: (String.t * Complex.t * (String.t * CG.expr) list * bool) list)
-    : (String.t * CG.expr) list * (String.t * Complex.t * (String.t * CG.expr) list * bool) list =
+    (pass_up: (String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list)
+    : (String.t * CG.expr) list * (String.t * (Complex.t * Complex.t) * (String.t * CG.expr) list * bool) list =
     let rec merge_gl gl c =
       match gl with
       | [] -> c
@@ -170,12 +170,12 @@ let rec downPass (e: CG.expr)
     | [] -> (List.rev_append vf (List.rev to_add)), List.rev pass_up
     | (v,f,gl,used)::tail ->
       if List.mem v vl then
-        collapse_fl tail vl ((v,Flip(f,f))::vf) (merge_gl gl to_add) pass_up
+        collapse_fl tail vl ((v,Flip(fst f,snd f))::vf) (merge_gl gl to_add) pass_up
       else
         collapse_fl tail vl vf to_add ((v,f,gl,used)::pass_up)
 
   (* Return each matching pair from two list *)
-  and find_match (l1: Complex.t list) (l2: Complex.t list) : Complex.t list =
+  and find_match (l1: (Complex.t * Complex.t) list) (l2: (Complex.t * Complex.t) list) : (Complex.t * Complex.t) list =
     match l1 with
     | [] -> []
     | head::tail ->
@@ -186,7 +186,7 @@ let rec downPass (e: CG.expr)
         (find_match tail l2)
 
   (* Return each non-pair from two list *)
-  and find_no_match (l1: Complex.t list) (l2: Complex.t list) : Complex.t list =
+  and find_no_match (l1: (Complex.t * Complex.t) list) (l2: (Complex.t * Complex.t) list) : (Complex.t * Complex.t) list =
     match l1 with
     | [] -> []
     | head::tail ->
@@ -217,7 +217,7 @@ let rec downPass (e: CG.expr)
 
   match e with
   | Flip(f1,f2) ->
-    (match replace f1 fl with
+    (match replace (f1,f2) fl with
     | None -> Flip(f1,f2), fl
     | Some (v, new_fl) -> Ident(v), new_fl)
 
@@ -337,9 +337,9 @@ let rec merge_branch (e: CG.expr) : CG.expr =
 let rec redundant_flip_elimination (e: CG.expr) : CG.expr =
   match e with
   | Flip(f1,f2) ->
-    if f1 = Complex.zero then
+    if f1 = Complex.zero && f2 = Complex.one then
       False
-    else if f1 = Complex.one then
+    else if f1 = Complex.one && f2 = Complex.zero then
       True
     else
       Flip(f1,f2)
